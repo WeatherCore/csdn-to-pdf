@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.wrangler/
+.dsh-pilot/
+*.log
+.DS_Store
+.dev.vars
