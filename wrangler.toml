@@ -1,0 +1,12 @@
+name = "csdn-to-pdf"
+main = "worker/src/index.ts"
+compatibility_date = "2025-01-01"
+
+# 静态资源：vite build 产物，与 API 同一个 Worker 托管，一次部署全搞定
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+# 云端 PDF 引擎：Browser Rendering（需要 Cloudflare 付费版 Workers；未绑定时 /api/pdf 返回 501，前端自动走本地引擎）
+[browser]
+binding = "BROWSER"
