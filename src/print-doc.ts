@@ -51,23 +51,23 @@ body {
   font-size: .88em; background: #f5f5f5; border-radius: 3px; padding: .08em .35em;
 }
 
-/* ---------- 代码块：浅底色整块保留，绝不跨页截断 ---------- */
+/* ---------- 代码块：浅底色，允许跨页切割（整块避断会把长块推下页、留大片空白） ---------- */
 .article-print pre {
   margin: .6em 0; padding: 8px 12px; overflow-x: hidden;
   background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 4px;
   font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
   font-size: .85em; line-height: 1.55;
   white-space: pre-wrap; word-break: break-all;
-  break-inside: avoid; page-break-inside: avoid;
   color: #1f2328;
 }
 .article-print pre code { background: none; padding: 0; font-size: 1em; color: inherit; }
 
-/* ---------- 表格：原味细线风 ---------- */
+/* ---------- 表格：原味细线风，允许跨页切割；整行仍不劈开（按行切，不切行中间） ---------- */
 .article-print table {
   border-collapse: collapse; margin: .6em 0; max-width: 100%;
-  break-inside: avoid; font-size: .95em;
+  font-size: .95em;
 }
+.article-print tr { break-inside: avoid; }
 .article-print th, .article-print td {
   border: 1px solid #d8d8d8; padding: 4px 9px; text-align: left; vertical-align: top;
 }
