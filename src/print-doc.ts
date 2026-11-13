@@ -54,13 +54,14 @@ body {
 /* ---------- 代码块：浅底色整块保留，绝不跨页截断 ---------- */
 .article-print pre {
   margin: .6em 0; padding: 8px 12px; overflow-x: hidden;
-  background: #f7f7f7; border: 1px solid #cfcfcf; border-radius: 4px;
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 4px;
   font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
   font-size: .85em; line-height: 1.55;
   white-space: pre-wrap; word-break: break-all;
   break-inside: avoid; page-break-inside: avoid;
+  color: #1f2328;
 }
-.article-print pre code { background: none; padding: 0; font-size: 1em; }
+.article-print pre code { background: none; padding: 0; font-size: 1em; color: inherit; }
 
 /* ---------- 表格：原味细线风 ---------- */
 .article-print table {
@@ -76,19 +77,30 @@ body {
 /* ---------- 图片：不劈开、不超宽 ---------- */
 .article-print img { max-width: 100%; height: auto; break-inside: avoid; }
 
-/* ---------- highlight.js：经典 CodeMirror/Jupyter 配色（浅色固定） ---------- */
-.hljs { color: #333; background: transparent; }
-.hljs-comment, .hljs-quote { color: #998; font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-subst { color: #333; font-weight: 700; }
-.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable { color: #008080; }
-.hljs-string, .hljs-doctag { color: #d14; }
-.hljs-title, .hljs-section, .hljs-title.class_, .hljs-title.function_ { color: #900; font-weight: 700; }
-.hljs-type, .hljs-class .hljs-title { color: #458; font-weight: 700; }
-.hljs-attr, .hljs-attribute, .hljs-name { color: #008080; }
-.hljs-built_in, .hljs-builtin-name { color: #0086b3; }
-.hljs-meta { color: #999; }
-.hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: 700; }
+/* ---------- 代码高亮：GitHub 风浅色（Prism token：CSDN 服务端自带 token/* 标记；hljs 兜底）
+   与 style.css 阅读页配色严格一致（共识：两处同色） ---------- */
+.token.comment, .token.prolog, .token.cdata { color: #6a737d; font-style: italic; }
+.token.doctype, .token.punctuation { color: #1f2328; }
+.token.keyword, .token.selector-tag, .token.literal { color: #d73a49; }
+.token.string, .token.char, .token.regexp, .token.addition { color: #032f62; }
+.token.number, .token.boolean, .token.constant, .token.symbol { color: #005cc5; }
+.token.title, .token.name, .token.selector-id, .token.function { color: #6f42c1; }
+.token.attr-name, .token.attribute, .token.variable, .token.template-variable { color: #e36209; }
+.token.section, .token.type, .token.builtin { color: #22863a; }
+.token.operator, .token.entity, .token.url { color: #d73a49; }
+.token.macro.property, .token.directive-hash { color: #e36209; }
+.token.directive { color: #d73a49; }
+.token.tag { color: #22863a; }
+.token.deleted { color: #b31d28; }
+.token.italic { font-style: italic; }
+.token.bold { font-weight: 700; }
+.hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #d73a49; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: #032f62; }
+.hljs-number, .hljs-built_in, .hljs-symbol { color: #005cc5; }
+.hljs-title, .hljs-name, .hljs-selector-id { color: #6f42c1; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #e36209; }
+.hljs-section, .hljs-type { color: #22863a; }
 `;
 
 /** 导出/云端发送用的完整文档：与引擎 PDF 参数（Letter、2cm）严格一致 */
