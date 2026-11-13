@@ -422,10 +422,9 @@ button:focus-visible, input:focus-visible {
   .topbar, .reader-end { display: none !important; }
   .reader { max-width: none; margin: 0; padding: 0; }
   .reader > h1 { font-size: 20pt; }
-  pre, blockquote, table, img, figure {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+  /* 长代码块/长表格允许跨页切割（整块避断会留大片空白）；表格整行仍不劈开 */
+  tr { break-inside: avoid; }
+  img, figure { break-inside: avoid; page-break-inside: avoid; }
   h1, h2, h3, h4, h5, h6 { break-after: avoid; }
   a { color: inherit; text-decoration: none; }
   blockquote { background: none; }
