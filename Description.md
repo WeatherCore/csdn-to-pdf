@@ -2,7 +2,7 @@
 
 ## 中文版
 
-csdn-to-pdf 是 Cloudflare Workers 上的 CSDN 文章清净阅读与转 PDF 工具：粘贴链接，服务端抓取正文、剥除评论侧栏广告与编辑器内嵌目录，只留标题与正文，一键存成 US Letter 排版的 PDF。含金量在净化与打印工程：标签属性双白名单加链接 scheme 校验拒绝默认净化堵 innerHTML 注入（pre 内部另有专用过滤器补盲区，Prism 高亮标记保真），正文图片 no-referrer 破 csdnimg.cn 防盗链，标题与正文容器三级兜底抗改版，组合判据付费检测防误杀，双条件截断检测诚实提示，GitHub 风浅色代码高亮阅读页与 PDF 同色，Letter 打印 CSS 防代码块跨页截断，PDF 带侧边栏书签大纲与页脚页码（无对话框双引擎渲染学自 ipynb-to-pdf）；VIP/付费文章明确拒绝，服务端零存储。工程为 main.ts 三状态机加 index.ts 净化管线，node-html-parser 解析，静态资产与 API 同 Worker 一次部署，适合常读 CSDN 要干净存档的开发者。
+csdn-to-pdf 是 Cloudflare Workers 上的 CSDN 文章清净阅读与转 PDF 工具：粘贴链接，服务端抓取正文、剥除评论侧栏广告与编辑器内嵌目录，只留标题与正文，一键存成 US Letter 排版的 PDF。含金量在净化与打印工程：标签属性双白名单加链接 scheme 校验拒绝默认净化堵 innerHTML 注入（pre 内部另有专用过滤器补盲区，Prism 高亮标记保真），正文图片 no-referrer 破 csdnimg.cn 防盗链，标题与正文容器三级兜底抗改版，组合判据付费检测防误杀，双条件截断检测诚实提示，GitHub 风浅色代码高亮阅读页与 PDF 同色，Letter 打印 CSS 长代码块与长表格按流式跨页续排（不留大片空白、表格整行不劈开），PDF 带侧边栏书签大纲与页脚页码（无对话框双引擎渲染学自 ipynb-to-pdf）；VIP/付费文章明确拒绝，服务端零存储。工程为 main.ts 三状态机加 index.ts 净化管线，node-html-parser 解析，静态资产与 API 同 Worker 一次部署，适合常读 CSDN 要干净存档的开发者。
 
 ## English
 
