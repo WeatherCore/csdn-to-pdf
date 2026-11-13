@@ -327,8 +327,6 @@ button:focus-visible, input:focus-visible {
   padding: 1px 6px;
 }
 #article-body pre {
-  background: var(--code-bg);
-  border: 1px solid var(--line);
   border-radius: var(--radius-s);
   padding: 16px 18px;
   overflow-x: auto;
@@ -339,6 +337,7 @@ button:focus-visible, input:focus-visible {
   border: none;
   padding: 0;
   font-size: 0.85em;
+  color: inherit;
 }
 
 #article-body table { border-collapse: collapse; margin: 1em 0; max-width: 100%; }
@@ -351,22 +350,37 @@ button:focus-visible, input:focus-visible {
 #article-body ul, #article-body ol { padding-left: 1.8em; }
 #article-body li { margin: 0.3em 0; }
 
-/* 极简代码高亮（hljs class） */
-.hljs-comment, .hljs-quote { color: var(--fg-3); font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #9333ea; }
-.hljs-string, .hljs-regexp, .hljs-addition { color: #16a34a; }
-.hljs-number, .hljs-built_in, .hljs-symbol { color: #b45309; }
-.hljs-title, .hljs-name, .hljs-selector-id { color: #2563eb; }
-.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #dc2626; }
-.hljs-section, .hljs-type { color: #0e7490; }
-@media (prefers-color-scheme: dark) {
-  .hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #c084fc; }
-  .hljs-string, .hljs-regexp, .hljs-addition { color: #4ade80; }
-  .hljs-number, .hljs-built_in, .hljs-symbol { color: #fbbf24; }
-  .hljs-title, .hljs-name, .hljs-selector-id { color: #60a5fa; }
-  .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #f87171; }
-  .hljs-section, .hljs-type { color: #22d3ee; }
+/* 代码高亮（Prism token，CSDN 服务端自带 token/* 标记；hljs 为老文章兜底）
+   GitHub 风浅色固定配色，与 print-doc.ts PRINT_CSS 严格一致（共识：两处同色）。
+   代码块本身固定浅底深字（深色 UI 下也是），否则浅色 token 在深底上不可读。 */
+#article-body pre {
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  color: #1f2328;
 }
+.token.comment, .token.prolog, .token.cdata { color: #6a737d; font-style: italic; }
+.token.doctype, .token.punctuation { color: #1f2328; }
+.token.keyword, .token.selector-tag, .token.literal { color: #d73a49; }
+.token.string, .token.char, .token.regexp, .token.addition { color: #032f62; }
+.token.number, .token.boolean, .token.constant, .token.symbol { color: #005cc5; }
+.token.title, .token.name, .token.selector-id, .token.function { color: #6f42c1; }
+.token.attr-name, .token.attribute, .token.variable, .token.template-variable { color: #e36209; }
+.token.section, .token.type, .token.builtin { color: #22863a; }
+.token.operator, .token.entity, .token.url { color: #d73a49; }
+.token.macro.property, .token.directive-hash { color: #e36209; }
+.token.directive { color: #d73a49; }
+.token.tag { color: #22863a; }
+.token.deleted { color: #b31d28; }
+.token.italic { font-style: italic; }
+.token.bold { font-weight: 700; }
+/* hljs 兜底（与上面同一套 GitHub 色相） */
+.hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #d73a49; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: #032f62; }
+.hljs-number, .hljs-built_in, .hljs-symbol { color: #005cc5; }
+.hljs-title, .hljs-name, .hljs-selector-id { color: #6f42c1; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #e36209; }
+.hljs-section, .hljs-type { color: #22863a; }
 
 /* 阅读页底部操作区 */
 .reader-end {
@@ -399,8 +413,8 @@ button:focus-visible, input:focus-visible {
 
 /* ============ 打印排版（工具界面全隐，只留正文） ============ */
 @page {
-  size: A4;
-  margin: 20mm 16mm;
+  size: letter;
+  margin: 2cm;
 }
 
 @media print {
@@ -414,10 +428,8 @@ button:focus-visible, input:focus-visible {
   }
   h1, h2, h3, h4, h5, h6 { break-after: avoid; }
   a { color: inherit; text-decoration: none; }
-  pre { border: 1px solid #d0d7de; background: #f6f8fa; }
-  pre code { color: #1f2328; }
   blockquote { background: none; }
-  #article-body code { color: #1f2328; }
+  /* 打印只隐藏工具界面；阅读页本就是浅底代码块，token 配色原样进纸 */
 }
 
 /* ============ 窄屏 ============ */
