@@ -6,7 +6,7 @@
  *   2. 服务端抓取文章页 HTML（免登录，正文完整，已实测）
  *   3. VIP/付费文章 → 明确拒绝（本工具的约定边界）
  *   4. 解析出标题 + 正文（#content_views），剥除一切 CSDN 脚手架
- *   5. 白名单清洗属性，杜绝脚本注入，图片加 no-referrer 破防盗链
+ *   5. 白名单清洗属性与链接 scheme，杜绝脚本注入，图片加 no-referrer 破防盗链
  *   6. 返回 { title, html }，用完即弃，服务端零存储
  */
 
@@ -53,6 +53,18 @@ function canonicalize(raw: string): string | null {
   return `https://${u.host}${u.pathname}`;
 }
 
+/** href 白名单：只放行 http(s)/mailto 与页内锚点，javascript: 等危险 scheme 一律没收 */
+function safeHref(href: string, base: string): string | null {
+  try {
+    const u = new URL(href, base);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
+    if (u.protocol === 'mailto:') return href;
+    return null;
+  } catch {
+    return null; // 解析失败（含畸形 scheme）→ 没收
+  }
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -78,6 +90,13 @@ const JUNK_SELECTORS = [
   '.csdn-tracking-statistics',
   '.recommend-box',
   '.template-box', // 文末“技术共进”模板卡
+  // CSDN 编辑器写进正文首位的内嵌目录块：原站用自己的内联 CSS display:none 藏它，
+  // 页面上那个"目录"按钮是侧栏另渲染的。这里照抄 CSDN 同款选择器（display:none 规则原文），
+  // 不删就会穿透过净化管线，在 PDF 里冒出"原文章没有的目录"。
+  '.toc', // markdown 正文目录：<div class="toc"><h4>文章目录</h4><ul>…</ul></div>
+  '#main-toc', // 富文本旧版目录标记
+  '#hr-toc', // 富文本旧版目录标记
+  'p[id*="-toc"]', // 富文本旧版目录占位段落
 ];
 
 /** 允许保留的标签，其余连内容一起丢弃 */
@@ -91,7 +110,7 @@ const KEEP_TAGS = new Set([
   'SPAN', 'DIV', 'SECTION', 'FIGURE', 'FIGCAPTION', 'CENTER', 'FONT',
 ]);
 
-/** 各标签允许保留的属性（class 只在 pre 内部保留，给代码高亮用） */
+/** 各标签允许保留的属性（pre 内部由 sanitizePreContent 单独处理） */
 function allowedAttrs(tag: string): string[] {
   switch (tag) {
     // 锚点 a 保留 id：CSDN 把标题锚点放在标题内空 <a id> 上，正文目录跳转靠它
@@ -106,17 +125,53 @@ function allowedAttrs(tag: string): string[] {
   }
 }
 
-/** 判断节点是否位于某个 <pre> 内部（决定 class 属性去留） */
-function insidePre(el: { parentNode: unknown }): boolean {
-  let node = el.parentNode as { tagName?: string; parentNode?: unknown } | null;
-  while (node) {
-    if (node.tagName === 'PRE') return true;
-    node = (node.parentNode ?? null) as { tagName?: string; parentNode?: unknown } | null;
+/**
+ * <pre> 内部内容专用安全过滤器。
+ *
+ * 背景：node-html-parser 默认把 <pre> 整块当原始文本节点（blockTextElements.pre=true），
+ * 内容不进 DOM —— 主净化循环（queryDocument('*')）看不见 pre 内部，白名单对它不生效。
+ * 直接改成 pre:false 也不行：9.0.7 会把 pre 内容整个丢掉（实测）。
+ * 所以单独把 pre 的 innerHTML 拆出来二次解析、逐节点清洗后回填。
+ *
+ * 高亮保真：CSDN 服务端 HTML 自带 Prism 标记（<span class="token keyword">…），
+ * pre 内 code/span 的 class 放行，token span 原样保留。
+ */
+function sanitizePreContent(rawInner: string, baseUrl: string): string {
+  const frag = parse(rawInner);
+  for (const el of frag.querySelectorAll('*')) {
+    const tag = (el.tagName ?? '').toUpperCase();
+    // script/style 在 pre 里没有任何正当用途，连内容一起扔（textContent 拿不到时会得到空串）
+    if (tag === 'SCRIPT' || tag === 'STYLE') {
+      el.remove();
+      continue;
+    }
+    if (tag && !KEEP_TAGS.has(tag)) {
+      // 非白名单标签：拆壳留文本（保留代码字面内容，例如示例 HTML 片段本身）
+      el.replaceWith(...el.childNodes);
+      continue;
+    }
+    // 属性白名单：pre 内部只放行 code/span 的 class（Prism token 标记）与 a 的 href
+    const allowed =
+      tag === 'CODE' || tag === 'SPAN' ? ['class']
+      : tag === 'A' ? ['href']
+      : [];
+    for (const attr of Object.keys(el.attributes)) {
+      if (!allowed.includes(attr)) el.removeAttribute(attr);
+    }
+    if (tag === 'A') {
+      const href = el.getAttribute('href');
+      if (href) {
+        const safe = safeHref(href, baseUrl);
+        if (safe) el.setAttribute('href', safe);
+        else el.removeAttribute('href');
+      }
+    }
+    if (tag === 'IMG') el.setAttribute('referrerpolicy', 'no-referrer');
   }
-  return false;
+  return frag.innerHTML;
 }
 
-function extractArticle(html: string): { title: string; html: string } | null {
+function extractArticle(html: string, baseUrl: string): { title: string; html: string } | null {
   const root = parse(html);
 
   // ---- 标题：h1 优先，og:title 兜底，最后 <title> 去后缀 ----
@@ -138,7 +193,7 @@ function extractArticle(html: string): { title: string; html: string } | null {
     for (const el of content.querySelectorAll(sel)) el.remove();
   }
 
-  // ---- 属性白名单 + class 特赦（代码高亮）----
+  // ---- 属性白名单 + pre 内部专用过滤 ----
   for (const el of content.querySelectorAll('*')) {
     const tag = (el.tagName ?? '').toUpperCase();
     if (tag && !KEEP_TAGS.has(tag)) {
@@ -146,14 +201,25 @@ function extractArticle(html: string): { title: string; html: string } | null {
       continue;
     }
     const allowed = allowedAttrs(tag);
-    if (insidePre(el) && (tag === 'CODE' || tag === 'SPAN' || tag === 'PRE')) {
-      allowed.push('class');
-    }
     for (const attr of Object.keys(el.attributes)) {
       if (!allowed.includes(attr)) el.removeAttribute(attr);
     }
+    // 链接白名单：只放行 http(s)/mailto/页内锚点，并补全相对路径（打印进 PDF 后链接依然可点）
+    if (tag === 'A') {
+      const href = el.getAttribute('href');
+      if (href) {
+        const safe = safeHref(href, baseUrl);
+        if (safe) el.setAttribute('href', safe);
+        else el.removeAttribute('href');
+      }
+    }
     // 图片一律 no-referrer 破 csdnimg.cn 防盗链
     if (tag === 'IMG') el.setAttribute('referrerpolicy', 'no-referrer');
+  }
+
+  // ---- pre 内部专用过滤：主循环看不见 pre 的原始文本内容，单独清洗（含 Prism token 保真）----
+  for (const pre of content.querySelectorAll('pre')) {
+    pre.innerHTML = sanitizePreContent(pre.innerHTML, baseUrl);
   }
 
   // ---- 删空壳节点（无文字也无图的 p/div/section/li/blockquote）----
@@ -191,9 +257,10 @@ async function handleExtract(url: URL, env: Env): Promise<Response> {
     resp = await fetch(target, {
       headers,
       redirect: 'follow',
+      signal: AbortSignal.timeout(15_000), // 抓取超时：不给 CSDN 慢响应挂住 Worker
     });
   } catch {
-    return json({ error: '抓取失败：网络异常，稍后再试。' }, 502);
+    return json({ error: '抓取失败：网络异常或超时，稍后再试。' }, 502);
   }
 
   if (!resp.ok) {
@@ -206,7 +273,16 @@ async function handleExtract(url: URL, env: Env): Promise<Response> {
     return json({ error: `抓取失败：目标站返回 HTTP ${resp.status}` }, 502);
   }
 
-  const html = await resp.text();
+  let html: string;
+  try {
+    html = await resp.text();
+  } catch {
+    return json({ error: '抓取失败：响应读取中断，稍后再试。' }, 502);
+  }
+  // 响应体上限：CSDN 文章页通常几百 KB，超出 5MB 视为异常响应
+  if (html.length > 5_000_000) {
+    return json({ error: '页面过大，超出本工具处理范围。' }, 413);
+  }
 
   // ---- 付费内容判定（组合判据，避免单信号误杀）----
   // 遮罩盒文案含购买字样，或 付费专栏购买按钮（data-price）+ articleType=1 同时出现 → 拒绝
@@ -218,7 +294,7 @@ async function handleExtract(url: URL, env: Env): Promise<Response> {
     return json({ error: '这是一篇 VIP/付费专栏文章，本工具不做（约定边界）。' }, 403);
   }
 
-  const article = extractArticle(html);
+  const article = extractArticle(html, target);
   if (!article) {
     return json(
       { error: '没找到正文：文章可能已被删除，或 CSDN 改版了。' },
