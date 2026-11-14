@@ -26,8 +26,8 @@ CSDN 的文章页塞满了评论区、侧栏、广告、AI 摘要和"关注博�
 
 1. 粘贴一篇 `blog.csdn.net` 文章链接；
 2. 服务端（Cloudflare Worker）抓取页面，**白名单净化**：剥掉一切脚手架，只留标题与正文；
-3. 浏览器呈现清净阅读页（代码高亮、图片原样保留，CSDN 藏在正文里的内嵌目录不出现）；
-4. 点"打印 / 存 PDF"——**无打印对话框**，本地/云端无头引擎直接渲染并下载成品 PDF（Letter 纸、侧边栏书签大纲、页脚页码）。
+3. 页面展开为**分屏工作台**：左侧清净正文、右侧 PDF 原生预览一步到位（代码高亮、图片原样保留，CSDN 藏在正文里的内嵌目录不出现）；
+4. 右侧确认 PDF 成品（Letter 纸、侧边栏书签大纲、页脚页码）后点**下载**——全程无打印对话框、不跳页、不清屏。
 
 > **约定边界**：VIP / 付费专栏文章直接拒绝，本工具不做（403）。免费正文读完即走，服务端**零存储**——不落库、不缓存、不留痕。
 
@@ -44,7 +44,8 @@ CSDN 不提供跨域 CORS 头，浏览器直连会被同源策略拦截；图片
 - 🖼️ **图片防盗链破解** — 正文图片统一 `referrerpolicy="no-referrer"`（index.ts:177）
 - 📝 **代码高亮保留** — CSDN 服务端自带的 Prism `token/*` 标记原样存活，自绘 GitHub 风浅色 token 配色（阅读页与 PDF 同色），零高亮库依赖（index.ts:149，style.css:354）
 - 📑 **内嵌目录剥除** — CSDN 编辑器藏进正文的 `.toc`/`#main-toc`/`#hr-toc` 目录块（原站靠自带 CSS 隐藏）在净化源头删除，PDF 不再冒出"原文章没有的目录"；标题 `id` 保留，PDF 书签大纲可导航（index.ts:76-98）
-- 🖨️ **无对话框 PDF 引擎** — 双引擎路由：本地无头 Chromium（puppeteer-core 驱动本机 Edge/Chrome）→ 云端 Browser Rendering，产出带 **PDF 书签大纲（h1-h3）** + **页脚页码** 的成品文件，逻辑学自 ipynb-to-pdf（server/local-pdf.ts / src/print-doc.ts）
+- 🖨️ **无对话框 PDF 引擎 + 页内预览** — 双引擎路由：本地无头 Chromium（puppeteer-core 驱动本机 Edge/Chrome）→ 云端 Browser Rendering，产出带 **PDF 书签大纲（h1-h3）** + **页脚页码** 的成品文件，在右侧面板用浏览器原生查看器**页内预览**，确认后再下载（server/local-pdf.ts / src/print-doc.ts）
+- 🔁 **重转不清场** — 工作台命令栏常驻吸顶，转换期间左右旧内容原地保留、右侧盖「转换中」进度层，新内容到达才替换
 - 🔗 **链接 scheme 白名单** — `a[href]` 只放行 http(s)/mailto/页内锚点，`javascript:` 等危险 scheme 在净化阶段没收，相对路径自动补全为绝对 URL（worker/src/index.ts:57）
 - 🖼️ **图片等待兜底** — PDF 渲染前等待网络空闲 + 逐张确认图片加载，CSDN 图床慢图不缺页（server/local-pdf.ts:111-117）
 - 🌗 **自动深浅双模式** — `prefers-color-scheme` 整套换色，含打印专属浅色皮（style.css:31-48）
@@ -56,13 +57,11 @@ CSDN 不提供跨域 CORS 头，浏览器直连会被同源策略拦截；图片
 
 ```mermaid
 flowchart TB
-    subgraph FE["浏览器 · 单页三状态（零框架）"]
+    subgraph FE["浏览器 · 双态单页（零框架）"]
         HOME["home<br/>粘贴链接 + 示例按钮"]
-        SKEL["loading<br/>骨架屏"]
-        READER["reading<br/>清净阅读页"]
-        PRINT["双引擎渲染<br/>本地 8788 → 云端 Browser Rendering"]
-    PDF["下载 .pdf<br/>书签大纲 + 页脚页码"]
-    end
+        WB["workbench 分屏工作台<br/>左：正文 · 右：PDF iframe 预览"]
+        PDF["下载 .pdf<br/>书签大纲 + 页脚页码"]
+        end
 
     subgraph WK["Cloudflare Worker（静态 + API 同体）"]
         ROUTE{"default.fetch<br/>路由分发"}
@@ -73,14 +72,13 @@ flowchart TB
 
     CSDN["blog.csdn.net<br/>文章页 HTML"]
 
-    HOME -- "GET /api/extract?url=…" --> ROUTE
+    HOME -- "GET /api/extract?url=…<br/>POST /api/pdf（一步到位）" --> ROUTE
     ROUTE -- "/api/*" --> API
     ROUTE -- "其余路径" --> ASSETS
     API --> SAN
     SAN -- "伪装浏览器头抓取<br/>(可选 CSDN_COOKIE)" --> CSDN
-    API -- "JSON {title, html, truncated}" --> READER
-    READER --> PRINT
-    PRINT --> PDF
+    API -- "JSON {title, html, truncated}" --> WB
+    WB -- "blob URL 页内预览" --> PDF
     HOME -.->|HTTP 5173<br/>dev 代理 8789| ROUTE
 ```
 
@@ -104,9 +102,9 @@ flowchart TB
 
 ```
 csdn-to-pdf/
-├── 🌐 index.html          # 单页骨架：顶栏双态 + home/skeleton/reader 三状态
+├── 🌐 index.html          # 双态骨架：顶栏双态 + home / workbench（左正文 · 右 PDF）
 ├── 📁 src/                # ─── 前端（Vite 构建）───
-│   ├── ⚛️ main.ts         # 三值状态机 + 事件绑定 + API 调用 + 双引擎转换
+│   ├── ⚛️ main.ts         # 双态状态机（home / workbench）+ 一步到位转换 + blob 页内预览 + 双引擎
 │   ├── 🎨 style.css       # 设计 token / 三状态样式 / 打印排版
 │   └── 🏷️ vite-env.d.ts   # Vite 类型声明
 ├── 📁 worker/             # ─── 后端（Cloudflare Worker）───
@@ -143,8 +141,8 @@ npm run dev:fe     # 终端 2：Vite dev → 页面 @ http://localhost:5173（/a
 **3️⃣ 体验核心链路**
 
 1. 打开 [http://localhost:5173](http://localhost:5173)
-2. 点"试一试"任一示例文章（一键填入并转换）
-3. 阅读页点 **打印 / 存 PDF** → 本地引擎直接下载成品 PDF（需先跑 `npm run pdf-server`；未启动时会给出明确指引）
+2. 点"试一试"任一示例文章（一键填入并转换，页面展开为分屏工作台）
+3. 右侧 PDF 预览生成完毕（本地引擎，需先跑 `npm run pdf-server`；未启动会自动回退云端或给出明确指引），页内确认后点**下载**
 
 **4️⃣ 类型检查 / 构建 / 部署**
 
