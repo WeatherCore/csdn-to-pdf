@@ -6,7 +6,7 @@
   <title>CSDN → PDF</title>
 </head>
 <body>
-  <!-- 顶栏：命令栏（转换前）→ 精简条（阅读时），打印时全部隐藏 -->
+  <!-- 顶栏：品牌（首页）→ 命令栏（工作台），命令栏常驻吸顶，重转不清场 -->
   <header class="topbar">
     <div class="topbar-home" id="topbar-home">
       <span class="brand">
@@ -16,26 +16,29 @@
       <span class="tagline">只留正文，其他全清</span>
     </div>
     <div class="topbar-reading" id="topbar-reading" hidden>
-      <button id="back-btn" class="btn ghost" type="button">
-        <i class="ph ph-arrow-left" aria-hidden="true"></i>返回
-      </button>
+      <form id="url-form" class="cmdbar" autocomplete="off">
+        <i class="ph ph-link" aria-hidden="true"></i>
+        <input id="url-input" type="url" spellcheck="false"
+               placeholder="粘贴另一篇 CSDN 文章链接…" aria-label="文章链接" />
+        <button id="go-btn" type="submit">转换</button>
+      </form>
     </div>
   </header>
 
-  <!-- 状态一：空状态（首页） -->
+  <!-- 状态一：首页（单栏居中，首次转换后整页展开为工作台） -->
   <main id="home" class="home">
     <div class="hero">
       <h1>把一篇 CSDN 文章<br /><em>读干净</em>，再存成 PDF。</h1>
-      <p class="sub">粘贴文章链接，得到只含标题与正文的阅读页，代码块、图片、目录原样保留。</p>
+      <p class="sub">粘贴文章链接，左边得到干净正文，右边直接出 PDF 预览，确认无误一键下载。</p>
     </div>
 
-    <form id="url-form" class="cmdbar" autocomplete="off">
+    <form id="url-form-home" class="cmdbar" autocomplete="off">
       <i class="ph ph-link" aria-hidden="true"></i>
-      <input id="url-input" type="url" spellcheck="false"
+      <input id="url-input-home" type="url" spellcheck="false"
              placeholder="https://blog.csdn.net/…/article/details/…" aria-label="文章链接" />
-      <button id="go-btn" type="submit">转换</button>
+      <button id="go-btn-home" type="submit">转换</button>
     </form>
-    <p id="status" class="status" role="alert"></p>
+    <p id="status-home" class="status" role="alert"></p>
 
     <div class="examples">
       <span>试一试：</span>
@@ -46,40 +49,123 @@
     </div>
 
     <ul class="points">
+      <li><i class="ph ph-columns" aria-hidden="true"></i><span><strong>一屏双看</strong>：左侧干净正文，右侧 PDF 原生预览，转换不清屏</span></li>
       <li><i class="ph ph-broom" aria-hidden="true"></i><span><strong>剥掉脚手架</strong>：评论区、侧栏、广告、AI 摘要，一个不留</span></li>
-      <li><i class="ph ph-monitor-arrow-up" aria-hidden="true"></i><span><strong>打印排版</strong>：Letter 纸、2cm 边距，长代码块跨页续排不留白</span></li>
       <li><i class="ph ph-shield-check" aria-hidden="true"></i><span><strong>零存储</strong>：抓完即走，服务端不保存任何内容</span></li>
     </ul>
   </main>
 
-  <!-- 状态二：骨架屏（加载中） -->
-  <main id="skeleton" class="reader-skeleton" hidden>
-    <div class="skeleton-title sk"></div>
-    <div class="sk" style="width: 38%"></div>
-    <div class="sk" style="width: 92%"></div>
-    <div class="sk" style="width: 86%"></div>
-    <div class="sk" style="width: 90%"></div>
-    <div class="sk sk-code" style="width: 100%"></div>
-    <div class="sk" style="width: 60%"></div>
-    <div class="sk sk-img" style="width: 70%"></div>
-    <div class="sk" style="width: 88%"></div>
-    <div class="sk" style="width: 74%"></div>
-  </main>
+  <!-- 状态二：工作台（分屏：左正文 / 右 PDF 预览） -->
+  <main id="workbench" class="workbench" hidden>
+    <!-- 左面板：正文 -->
+    <section class="pane pane-reader" aria-label="文章正文">
+      <div class="pane-scroll">
+        <!-- 抓取错误条 -->
+        <div id="reader-error" class="reader-error" hidden>
+          <i class="ph ph-warning" aria-hidden="true"></i>
+          <p id="reader-error-msg"></p>
+        </div>
 
-  <!-- 状态三：阅读页 -->
-  <main id="reader" class="reader" hidden>
-    <div id="truncation-note" class="truncation-note" hidden>
-      <i class="ph ph-warning" aria-hidden="true"></i>
-      <span>这篇的完整正文需要 CSDN 登录态，只抓到了开头部分。可在 Worker 配置 CSDN_COOKIE 后重试。</span>
-    </div>
-    <h1 id="article-title"></h1>
-    <article id="article-body"></article>
-    <div class="reader-end">
-      <button id="print-btn" class="btn print" type="button">
-        <i class="ph ph-printer" aria-hidden="true"></i>打印 / 存 PDF
-      </button>
-      <button id="again-btn" class="btn ghost" type="button">再来一篇</button>
-    </div>
+        <!-- 骨架屏（首转无内容时） -->
+        <div id="reader-skeleton" class="reader-skeleton" hidden>
+          <div class="sk"></div>
+          <div class="sk" style="width: 38%"></div>
+          <div class="sk" style="width: 92%"></div>
+          <div class="sk" style="width: 86%"></div>
+          <div class="sk" style="width: 90%"></div>
+          <div class="sk sk-code" style="width: 100%"></div>
+          <div class="sk" style="width: 60%"></div>
+          <div class="sk sk-img" style="width: 70%"></div>
+          <div class="sk" style="width: 88%"></div>
+          <div class="sk" style="width: 74%"></div>
+        </div>
+
+        <div id="truncation-note" class="truncation-note" hidden>
+          <i class="ph ph-warning" aria-hidden="true"></i>
+          <span>这篇的完整正文需要 CSDN 登录态，只抓到了开头部分。可在 Worker 配置 CSDN_COOKIE 后重试。</span>
+        </div>
+
+        <h1 id="article-title" hidden></h1>
+        <article id="article-body" hidden></article>
+
+        <!-- 左面板空态：尚未抓取 -->
+        <div id="reader-empty" class="reader-empty">
+          <i class="ph ph-article" aria-hidden="true"></i>
+          <p>正文会出现在这里。粘贴链接点「转换」，PDF 同时在右侧生成。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右面板：PDF 预览 -->
+    <section class="pane pane-pdf" aria-label="PDF 预览">
+      <div class="pdf-head" id="pdf-head" hidden>
+        <i class="ph ph-file-pdf pdf-head-icon" aria-hidden="true"></i>
+        <span class="pdf-name" id="pdf-name"></span>
+        <span class="pdf-meta" id="pdf-meta"></span>
+        <span class="pdf-actions">
+          <button id="pdf-regen" class="icon-btn" type="button" title="重新生成"
+                  aria-label="重新生成 PDF">
+            <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
+          </button>
+          <button id="pdf-open" class="icon-btn" type="button" title="新标签打开"
+                  aria-label="在新标签页打开 PDF">
+            <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+          </button>
+          <button id="pdf-download" class="btn print" type="button">
+            <i class="ph ph-download-simple" aria-hidden="true"></i>下载
+          </button>
+        </span>
+      </div>
+
+      <div class="pdf-stage" id="pdf-stage">
+        <!-- 空态 -->
+        <div id="pdf-empty" class="pdf-empty">
+          <i class="ph ph-file-pdf" aria-hidden="true"></i>
+          <p>转换后 PDF 会出现在这里。</p>
+        </div>
+
+        <!-- 骨架屏 -->
+        <div id="pdf-skeleton" class="pdf-skeleton" hidden>
+          <div class="sk sk-page"></div>
+          <div class="sk sk-page"></div>
+        </div>
+
+        <!-- 生成中（阶段进度盖层） -->
+        <div id="pdf-busy" class="pdf-busy" hidden>
+          <div class="busy-card" role="status" aria-live="polite">
+            <div class="busy-title">
+              <i class="ph ph-circle-notch" aria-hidden="true"></i>
+              <span>正在转换</span>
+            </div>
+            <div class="busy-stages" id="busy-stages"></div>
+          </div>
+        </div>
+
+        <!-- 预览本体 -->
+        <iframe id="pdf-frame" class="pdf-frame" hidden
+                title="PDF 预览"></iframe>
+
+        <!-- 降级卡：当前环境不支持 iframe 内联 PDF -->
+        <div id="pdf-fallback" class="pdf-fallback" hidden>
+          <i class="ph ph-file-pdf" aria-hidden="true"></i>
+          <h2>此浏览器不支持页内预览</h2>
+          <p>PDF 已生成完毕，点下面按钮直接保存，或用桌面浏览器打开本页享受页内预览。</p>
+          <button id="pdf-fallback-download" class="btn print" type="button">
+            <i class="ph ph-download-simple" aria-hidden="true"></i>下载 PDF
+          </button>
+        </div>
+
+        <!-- 失败卡 -->
+        <div id="pdf-error" class="pdf-error" hidden>
+          <i class="ph ph-warning" aria-hidden="true"></i>
+          <h2>PDF 生成失败</h2>
+          <p id="pdf-error-msg"></p>
+          <button id="pdf-retry" class="btn print" type="button">
+            <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>重试
+          </button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="/src/main.ts"></script>
