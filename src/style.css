@@ -1,7 +1,7 @@
 /* ============================================================
-   CSDN → PDF · 设计 token + 三状态样式
+   CSDN → PDF · 设计 token + 双态样式（首页 / 分屏工作台）
    主题：安静的阅读工具。自动深浅双模式（prefers-color-scheme）。
-   表盘：VARIANCE 3 / MOTION 3 / DENSITY 3
+   表盘：VARIANCE 4 / MOTION 3 / DENSITY 4
    ============================================================ */
 
 :root {
@@ -26,6 +26,10 @@
 
   --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --mono: Consolas, "JetBrains Mono", "Courier New", monospace;
+
+  /* 工作台 */
+  --topbar-h: 64px;
+  --pdf-chrome: #ececef;        /* PDF 面板衬底（纸张外） */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +47,7 @@
     --quote-bg: #17171b;
     --sk-base: #26262c;
     --sk-shine: #32323a;
+    --pdf-chrome: #0c0c0f;      /* 深色下更深一档，衬白纸 */
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 32px rgb(0 0 0 / 0.35);
   }
 }
@@ -92,7 +97,12 @@ button:focus-visible, input:focus-visible {
   max-width: 1080px;
   margin: 0 auto;
   padding: 14px 20px;
-  min-height: 64px;
+  min-height: var(--topbar-h);
+}
+/* 工作台顶栏通栏（左右面板都是它的工作区） */
+.topbar-reading {
+  max-width: none;
+  padding: 10px 16px;
 }
 .brand {
   display: inline-flex;
@@ -106,31 +116,7 @@ button:focus-visible, input:focus-visible {
 .brand .ph-arrow-right { font-size: 14px; color: var(--fg-3); }
 .tagline { color: var(--fg-3); font-size: 13px; }
 
-/* ============ 状态一：首页 ============ */
-.home {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 64px 20px 96px;
-}
-
-.hero h1 {
-  font-size: clamp(28px, 4.6vw, 40px);
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  margin: 0 0 12px;
-  font-weight: 750;
-}
-.hero h1 em {
-  font-style: normal;
-  color: var(--accent);
-}
-.hero .sub {
-  margin: 0 0 36px;
-  color: var(--fg-2);
-  max-width: 34em;
-}
-
-/* 命令栏：一条大输入框 */
+/* ============ 命令栏（首页大条 / 工作台精简条，同一组件两种密度） ============ */
 .cmdbar {
   display: flex;
   align-items: center;
@@ -170,24 +156,46 @@ button:focus-visible, input:focus-visible {
 .cmdbar button:active { transform: scale(0.98); }
 .cmdbar button:disabled { opacity: 0.5; cursor: wait; }
 
+/* 工作台顶栏里的命令栏收窄、压扁一档 */
+.topbar-reading .cmdbar {
+  flex: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  box-shadow: none;
+}
+.topbar-reading .cmdbar input { padding: 6px 0; font-size: 14px; }
+.topbar-reading .cmdbar button { padding: 7px 18px; font-size: 14px; }
+
 .status {
   min-height: 1.4em;
   margin: 10px 4px 0;
   font-size: 13.5px;
   color: var(--fg-2);
 }
-.status.error { color: #dc2626; }
-@media (prefers-color-scheme: dark) {
-  .status.error { color: #f87171; }
+
+/* ============ 首页 ============ */
+.home {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 20px 96px;
 }
 
-/* 云端转换阶段提示（学自参考版） */
-.stages { display: inline-flex; gap: 14px; margin-left: 12px; }
-.stage { display: inline-flex; align-items: center; gap: 5px; }
-.stage i { font-size: 14px; color: var(--fg-3); }
-.stage.done i { color: #16a34a; }
-.stage.active { color: var(--accent); font-weight: 600; }
-.stage.active i { color: var(--accent); }
+.hero h1 {
+  font-size: clamp(28px, 4.6vw, 40px);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  font-weight: 750;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero .sub {
+  margin: 0 0 36px;
+  color: var(--fg-2);
+  max-width: 34em;
+}
 
 .examples {
   display: flex;
@@ -228,11 +236,203 @@ button:focus-visible, input:focus-visible {
 .points i { color: var(--accent); font-size: 18px; flex: none; translate: 0 2px; }
 .points strong { color: var(--fg); font-weight: 600; }
 
-/* ============ 骨架屏 ============ */
+/* ============ 工作台：分屏 ============ */
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(480px, 42vw) 1fr;
+  height: calc(100dvh - var(--topbar-h));
+  animation: workbench-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes workbench-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+.pane-reader { border-right: 1px solid var(--line); }
+.pane-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px clamp(16px, 3vw, 40px) 48px;
+  max-width: 860px;
+}
+
+/* PDF 面板：衬底色 + 头部 + 舞台 */
+.pane-pdf { background: var(--pdf-chrome); }
+.pdf-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.pdf-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pdf-head-icon { font-size: 17px; color: var(--accent); flex: none; }
+.pdf-meta { color: var(--fg-3); font-size: 12.5px; white-space: nowrap; }
+.pdf-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--fg-2);
+  font-size: 16px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-s);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 11px 22px;
+  transition: transform 0.1s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn.print { background: var(--accent); color: var(--accent-fg); }
+.btn.print:hover { opacity: 0.92; }
+.btn.print:disabled { opacity: 0.5; cursor: wait; }
+.btn.ghost {
+  background: none;
+  border: 1px solid var(--line-2);
+  color: var(--fg-2);
+}
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 头部按钮密度比正文按钮低一档 */
+.pdf-head .btn { padding: 7px 16px; font-size: 14px; }
+
+.pdf-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.pdf-stage > * { width: 100%; }
+
+.pdf-frame {
+  border: none;
+  background: transparent;
+}
+
+/* ---- PDF 面板各状态 ---- */
+.pdf-empty, .pdf-fallback, .pdf-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px;
+  text-align: center;
+  color: var(--fg-2);
+}
+.pdf-empty i, .pdf-fallback i, .pdf-error i { font-size: 44px; color: var(--fg-3); }
+.pdf-empty p, .pdf-fallback p, .pdf-error p { margin: 4px 0 10px; max-width: 40em; }
+.pdf-fallback h2, .pdf-error h2 { font-size: 17px; margin: 8px 0 0; }
+.pdf-fallback .btn, .pdf-error .btn { margin-top: 6px; }
+
+.pdf-error i { color: #dc2626; }
+@media (prefers-color-scheme: dark) {
+  .pdf-error i { color: #f87171; }
+}
+
+/* 生成中：盖层叠在旧 PDF 之上，不清场 */
+.pdf-busy {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--pdf-chrome) 72%, transparent);
+  backdrop-filter: blur(2px);
+}
+.busy-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-card);
+  padding: 18px 24px 20px;
+  min-width: 280px;
+  animation: busy-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes busy-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.busy-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg-2);
+  margin-bottom: 12px;
+}
+.busy-title i { font-size: 15px; color: var(--accent); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.busy-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--fg-3);
+  transition: color 0.2s ease;
+}
+/* 步骤连接线：竖排串联 */
+.stage::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: -9px;
+  width: 1px;
+  height: 9px;
+  background: var(--line-2);
+}
+.stage:first-child::before { display: none; }
+.stage i { font-size: 17px; color: var(--fg-3); flex: none; transition: color 0.2s ease; }
+.stage.done { color: var(--fg-2); }
+.stage.done i { color: #16a34a; animation: pop 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.stage.active { color: var(--accent); font-weight: 600; }
+.stage.active i { color: var(--accent); animation: spin 1s linear infinite; }
+
+/* ---- 骨架 ---- */
 .reader-skeleton {
-  max-width: 760px;
-  margin: 48px auto;
-  padding: 0 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -263,6 +463,59 @@ button:focus-visible, input:focus-visible {
 .sk-code { height: 120px; border-radius: var(--radius-s); }
 .sk-img { height: 180px; border-radius: var(--radius-s); }
 
+/* PDF 骨架：两张纸，呼吸浮动 */
+.pdf-skeleton {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  justify-content: center;
+  padding: 28px;
+}
+.sk-page {
+  width: min(46%, 300px);
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  animation: page-breathe 2.2s ease-in-out infinite;
+}
+.sk-page:last-child { animation-delay: 0.35s; }
+@keyframes page-breathe {
+  0%, 100% { opacity: 0.55; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* ---- 左面板各状态 ---- */
+.reader-empty, .reader-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--fg-3);
+}
+.reader-empty i { font-size: 44px; }
+.reader-empty p { margin: 0; max-width: 30em; font-size: 14.5px; }
+
+.reader-error {
+  align-items: flex-start;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid #dc2626;
+  border-radius: var(--radius-s);
+  background: color-mix(in srgb, #dc2626 6%, var(--surface));
+  color: var(--fg-2);
+  text-align: left;
+  font-size: 14px;
+}
+.reader-error i { color: #dc2626; font-size: 18px; }
+@media (prefers-color-scheme: dark) {
+  .reader-error { border-color: #7f1d1d; }
+  .reader-error i { color: #f87171; }
+}
+.reader-error p { margin: 0; }
+
 /* 截断提示条 */
 .truncation-note {
   display: flex;
@@ -279,19 +532,7 @@ button:focus-visible, input:focus-visible {
 .truncation-note i { color: #d97706; font-size: 18px; flex: none; translate: 0 2px; }
 .truncation-note[hidden] { display: none; }
 
-/* ============ 阅读页 ============ */
-.reader {
-  max-width: 760px;
-  margin: 40px auto 0;
-  padding: 0 20px 40px;
-}
-.reader > h1 {
-  font-size: 1.75em;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  margin: 0 0 28px;
-}
-
+/* ============ 阅读页正文 ============ */
 #article-body { line-height: 1.8; overflow-wrap: break-word; }
 #article-body p { margin: 0.9em 0; }
 #article-body h1, #article-body h2, #article-body h3,
@@ -301,6 +542,14 @@ button:focus-visible, input:focus-visible {
 }
 #article-body h2 { font-size: 1.45em; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 #article-body h3 { font-size: 1.22em; }
+
+.pane-scroll > h1 {
+  font-size: 1.75em;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  margin: 0 0 28px;
+}
+
 #article-body img {
   max-width: 100%;
   height: auto;
@@ -382,35 +631,6 @@ button:focus-visible, input:focus-visible {
 .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #e36209; }
 .hljs-section, .hljs-type { color: #22863a; }
 
-/* 阅读页底部操作区 */
-.reader-end {
-  margin-top: 48px;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  gap: 12px;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  border-radius: var(--radius-s);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 11px 22px;
-  transition: transform 0.1s ease, opacity 0.15s ease, border-color 0.15s ease;
-}
-.btn:active { transform: scale(0.98); }
-.btn.print { background: var(--accent); color: var(--accent-fg); }
-.btn.print:hover { opacity: 0.92; }
-.btn.ghost {
-  background: none;
-  border: 1px solid var(--line-2);
-  color: var(--fg-2);
-}
-.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
-
 /* ============ 打印排版（工具界面全隐，只留正文） ============ */
 @page {
   size: letter;
@@ -419,24 +639,31 @@ button:focus-visible, input:focus-visible {
 
 @media print {
   body { background: #fff; color: #000; font-size: 12.5pt; }
-  .topbar, .reader-end { display: none !important; }
-  .reader { max-width: none; margin: 0; padding: 0; }
-  .reader > h1 { font-size: 20pt; }
-  /* 长代码块/长表格允许跨页切割（整块避断会留大片空白）；表格整行仍不劈开 */
-  tr { break-inside: avoid; }
-  img, figure { break-inside: avoid; page-break-inside: avoid; }
-  h1, h2, h3, h4, h5, h6 { break-after: avoid; }
-  a { color: inherit; text-decoration: none; }
-  blockquote { background: none; }
-  /* 打印只隐藏工具界面；阅读页本就是浅底代码块，token 配色原样进纸 */
+  .topbar, .workbench, .home { display: none !important; }
+  /* Ctrl+P 直印路径：工具皮全隐。正文隐藏态由打印前 JS 负责（workbench 内联） */
 }
 
-/* ============ 窄屏 ============ */
+/* ============ 窄屏：单栏降级 ============ */
+@media (max-width: 1023px) {
+  .workbench {
+    display: block;
+    height: auto;
+  }
+  .pane-reader { border-right: none; border-bottom: 1px solid var(--line); }
+  .pane-scroll {
+    max-width: none;
+    padding: 24px 16px 40px;
+  }
+  /* 窄屏不渲染内联预览：右面板只剩空态 / 骨架 / busy / 降级卡 / 错误卡 */
+  .pane-pdf { min-height: 300px; }
+  .pdf-frame { display: none; }
+}
+
 @media (max-width: 640px) {
   .home { padding-top: 40px; }
   .cmdbar { flex-wrap: wrap; padding: 12px; }
   .cmdbar input { flex: 1 1 100%; order: -1; padding: 6px 0 10px; }
   .cmdbar > i { display: none; }
   .cmdbar button { flex: 1; }
-  .reader { margin-top: 24px; }
+  .topbar-reading { padding: 10px 12px; }
 }
